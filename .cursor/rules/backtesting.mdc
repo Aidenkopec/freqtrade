@@ -1,0 +1,117 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+***
+
+### Expert Strategy for Robust Crypto Backtesting: The Funnel Method
+
+This guide outlines a professional methodology for selecting trading pairs to ensure your backtests are **realistic**, **robust**, and **scientifically reproducible**. Using dynamic pairlists (like `VolumePairList`) directly for backtesting can lead to "lookahead bias" and results that aren't repeatable, as the list of pairs changes over time. This "Funnel Method" avoids those pitfalls.
+
+The process involves two main stages:
+1.  **Discovery:** Use a dynamic pairlist to cast a wide net and find a list of currently relevant, high-volume trading pairs.
+2.  **Lock-In:** Convert that dynamic list into a static list to ensure every backtest runs on the exact same set of assets, making your results comparable and scientific.
+
+---
+
+### Step 1: Discover a Broad, Relevant Pair List
+
+First, we'll configure Freqtrade to find the top 40 most traded pairs on your exchange, filtering out any you wish to explicitly exclude.
+
+#### Configuration for Discovery (`user_data/config.json`)
+
+Modify your `config.json` to temporarily disable your static `pair_whitelist` and enable the dynamic `VolumePairList`.
+
+```json
+{
+    // ... other config settings ...
+    "exchange": {
+        "name": "kraken",
+        "key": "...",
+        "secret": "...",
+        "pair_whitelist": [],
+        "pair_blacklist": [
+            ".*/EUR",
+            ".*/USD"
+        ]
+    },
+    "pairlists": [
+        {
+            "method": "VolumePairList",
+            "number_assets": 40
+        }
+    ],
+    // ... other config settings ...
+}
+```
+
+#### Command to Generate the Pair List
+
+Now, run the following command in your terminal. This will connect to the exchange and print a list of the top 40 pairs by 24-hour volume.
+
+```bash
+docker-compose run --rm freqtrade test-pairlist
+```
+
+You will get an output containing a list of pairs, like: `['ETH/USDT', 'BTC/USDT', 'SOL/USDT', ...]`. Copy this list for the next step.
+
+---
+
+### Step 2: Lock-In the List for Reproducible Backtesting
+
+With the generated list, we'll now reconfigure `config.json` to use this as a static, unchanging list. This is the key to reproducibility.
+
+#### Configuration for Backtesting (`user_data/config.json`)
+
+Paste the list of pairs you just copied into the `pair_whitelist` section. Then, **disable the dynamic pairlist** by setting the `pairlists` array to be empty.
+
+```json
+{
+    // ... other config settings ...
+    "exchange": {
+        "name": "kraken",
+        "key": "...",
+        "secret": "...",
+        "pair_whitelist": [
+            "ETH/USDT",
+            "USDC/USDT",
+            "BTC/USDT",
+            "SOL/USDT",
+            "XRP/USDT",
+            "XMR/USDT",
+            // ... paste the rest of the generated list here ...
+            "EOS/USDT",
+            "USTC/USDT"
+        ],
+        "pair_blacklist": [
+            ".*/EUR",
+            ".*/USD"
+        ]
+    },
+    "pairlists": [],
+    // ... other config settings ...
+}
+```
+
+---
+
+### Step 3: Download Data and Run the Backtest
+
+Your configuration is now perfectly set. The final steps are to download the historical data for your chosen pairs and run the backtest.
+
+#### Final Commands
+
+1.  **Download Historical Data:** This command fetches all available data for the pairs now specified in your `pair_whitelist`. This may take some time.
+
+    ```bash
+    docker-compose run --rm freqtrade download-data
+    ```
+
+2.  **Run the Backtest:** This command executes the backtest using your strategy against the newly downloaded data.
+
+    ```bash
+    docker-compose run --rm freqtrade backtesting --strategy SampleStrategy
+    ```
+
+You have now completed a professional backtesting setup. Any future changes in performance can be confidently attributed to modifications in your strategy logic, not a fluctuating list of pairs.

@@ -1,0 +1,65 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+***
+
+### Complete Freqtrade Command Reference (Modular Config)
+
+This reference provides all the necessary commands to run and manage your Freqtrade bot using the new multi-file configuration setup.
+
+---
+
+### To Run the Bot (Live or Dry-Run Trading)
+
+This is the command you'll use to start the bot for regular trading. It uses your static, curated pairlist from `config-backtest.json` to ensure the bot only trades the assets you have tested and approved.
+
+*Your `config-base.json` is currently set to `dry_run: true`. To switch to live trading with real funds, you would edit that file and set `dry_run: false`.*
+
+```bash
+docker-compose run --rm freqtrade trade \
+    --config user_data/config-base.json \
+    --config user_data/config-secrets.json \
+    --config user_data/config-backtest.json \
+    --strategy SampleStrategy
+```
+
+---
+
+### To Backtest Your Strategy
+
+This command is for testing your strategy against historical data. It uses the exact same configuration as your live bot to ensure that your backtest results are as close as possible to what you can expect in a live environment.
+
+1.  **Download Historical Data (if needed):**
+    ```bash
+    docker-compose run --rm freqtrade download-data \
+        --config user_data/config-base.json \
+        --config user_data/config-secrets.json \
+        --config user_data/config-backtest.json
+    ```
+
+2.  **Run the Backtest:**
+    ```bash
+    docker-compose run --rm freqtrade backtesting \
+        --config user_data/config-base.json \
+        --config user_data/config-secrets.json \
+        --config user_data/config-backtest.json \
+        --strategy SampleStrategy
+    ```
+
+---
+
+### To Discover New Pairs
+
+Use this command periodically (e.g., once a week or month) to find a fresh list of high-volume pairs. This is the "discovery" step of your workflow.
+
+1.  **Generate the New Pair List:**
+    ```bash
+    docker-compose run --rm freqtrade test-pairlist \
+        --config user_data/config-base.json \
+        --config user_data/config-secrets.json \
+        --config user_data/config-discovery.json
+    ```
+2.  **Update Your Configuration:** Copy the list of pairs from the command output and paste it into the `pair_whitelist` section of `user_data/config-backtest.json`.
+3.  **Commit the Change:** Use `git` to save the updated `config-backtest.json` so you have a history of your pairlists.
